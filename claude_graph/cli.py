@@ -9,6 +9,7 @@ from pathlib import Path
 
 from claude_graph.build import build_graph, update_graph
 from claude_graph.graph_store import GraphStore
+from claude_graph.install import install_claude_code
 from claude_graph.repo import NotAGitRepoError, find_repo_root
 
 
@@ -43,11 +44,22 @@ def _cmd_status(args: argparse.Namespace) -> None:
         print(json.dumps(store.stats(), indent=2))
 
 
+def _cmd_install(args: argparse.Namespace) -> None:
+    repo_root = _resolve_repo_root(args.repo)
+    result = install_claude_code(repo_root)
+    print(json.dumps(result, indent=2))
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="claude-graph")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
-    for name, handler in (("build", _cmd_build), ("update", _cmd_update), ("status", _cmd_status)):
+    for name, handler in (
+        ("build", _cmd_build),
+        ("update", _cmd_update),
+        ("status", _cmd_status),
+        ("install", _cmd_install),
+    ):
         sub = subparsers.add_parser(name)
         sub.add_argument("--repo", default=None, help="Repository root (default: current directory)")
         sub.set_defaults(func=handler)

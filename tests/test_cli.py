@@ -48,3 +48,10 @@ def test_update_command_after_build(tmp_path, capsys):
 def test_build_outside_git_repo_exits_with_error(tmp_path):
     with pytest.raises(SystemExit):
         main(["build", "--repo", str(tmp_path)])
+
+
+def test_install_command_writes_config_and_skills(tmp_path, capsys):
+    repo = _make_repo(tmp_path)
+    main(["install", "--repo", str(repo)])
+    assert (repo / ".mcp.json").exists()
+    assert (repo / ".claude" / "skills" / "build-graph" / "SKILL.md").exists()

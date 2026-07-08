@@ -38,7 +38,8 @@ def _node_ids_for_files(store: GraphStore, files: list[str]) -> set[int]:
 def _bfs_reverse(store: GraphStore, seed_ids: set[int], kind: str, depth: int) -> list[dict]:
     """Walk edges of `kind` backwards from `seed_ids` up to `depth` hops,
     returning every node reached with the hop distance at which it was
-    first found."""
+    first found. Seed nodes are traversed through (to discover their callers)
+    but excluded from results (they are already changed, not impact)."""
     visited: dict[int, int] = {}
     frontier = set(seed_ids)
     current_depth = 0
@@ -47,16 +48,18 @@ def _bfs_reverse(store: GraphStore, seed_ids: set[int], kind: str, depth: int) -
         next_frontier: set[int] = set()
         for node_id in frontier:
             for edge in store.edges_by_dst(node_id, kind):
-                if edge["src"] not in visited and edge["src"] not in seed_ids:
+                if edge["src"] not in visited:
                     visited[edge["src"]] = current_depth
                     next_frontier.add(edge["src"])
         frontier = next_frontier
 
     results = []
     for node_id, hop in visited.items():
-        node = store.get_node(node_id)
-        if node is not None:
-            results.append({"file": node["file"], "name": node["name"], "kind": node["kind"], "depth": hop})
+        # Exclude seed nodes from results; they are on changed files, not impact
+        if node_id not in seed_ids:
+            node = store.get_node(node_id)
+            if node is not None:
+                results.append({"file": node["file"], "name": node["name"], "kind": node["kind"], "depth": hop})
     return results
 
 

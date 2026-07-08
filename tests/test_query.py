@@ -84,3 +84,24 @@ def test_query_graph_raises_on_unknown_pattern(tmp_path):
     with GraphStore(repo / ".claude-graph" / "graph.db") as store:
         with pytest.raises(ValueError):
             query_graph(store, "not_a_real_pattern", "x")
+
+
+def test_callers_of_finds_class_instantiation(tmp_path):
+    """Regression test: callers_of should find instantiations of classes,
+    not just function calls. When a class is instantiated (e.g., Greeter()),
+    the build layer creates a 'calls' edge to the class node."""
+    _git("init", "-q", cwd=tmp_path)
+    _write(tmp_path, "b.py", "class Greeter:\n    def __init__(self):\n        pass\n")
+    _write(
+        tmp_path,
+        "a.py",
+        "from b import Greeter\n\ndef greet():\n    g = Greeter()\n    return 'hello'\n",
+    )
+    _git("add", "-A", cwd=tmp_path)
+    build_graph(tmp_path, full_rebuild=True)
+
+    with GraphStore(tmp_path / ".claude-graph" / "graph.db") as store:
+        results = callers_of(store, "Greeter")
+    assert any(
+        r["file"] == "a.py" and r["name"] == "greet" for r in results
+    ), f"Expected greet function from a.py to be a caller of Greeter class, got: {results}"

@@ -7,11 +7,16 @@ from claude_graph.graph_store import GraphStore
 
 
 def callers_of(store: GraphStore, name: str) -> list[dict]:
-    """Every function that calls a function named `name`, anywhere in
-    the graph. Matches are by name, a heuristic across files with
-    same-named functions (see README limitations)."""
+    """Every function that calls a function/class named `name`, anywhere in
+    the graph. For classes, matches represent instantiations (e.g., Foo()).
+    Matches are by name, a heuristic across files with same-named functions
+    or classes (see README limitations)."""
     results = []
-    for target in store.find_nodes_by_name(name, kind="function"):
+    # Include both function targets and class targets (instantiations)
+    targets = store.find_nodes_by_name(name, kind="function") + store.find_nodes_by_name(
+        name, kind="class"
+    )
+    for target in targets:
         for edge in store.edges_by_dst(target["id"], "calls"):
             src = store.get_node(edge["src"])
             if src is not None:

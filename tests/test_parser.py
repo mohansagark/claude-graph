@@ -1,3 +1,4 @@
+import sys
 from pathlib import Path
 
 from claude_graph.languages import language_for_extension, load_default_languages
@@ -54,3 +55,13 @@ def test_parse_empty_file_returns_empty_lists(tmp_path):
     assert nodes == []
     assert calls == []
     assert imports == []
+
+
+def test_parse_deeply_nested_file_does_not_recursion_error(tmp_path):
+    configs = load_default_languages()
+    config = language_for_extension(configs, "deep.py")
+    depth = sys.getrecursionlimit() + 500
+    deep = tmp_path / "deep.py"
+    deep.write_text("x = " + "(" * depth + "1" + ")" * depth + "\n")
+    nodes, calls, imports = parse_file(deep, config)
+    assert nodes == []

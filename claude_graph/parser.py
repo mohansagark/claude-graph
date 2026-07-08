@@ -35,10 +35,12 @@ class ParsedImport:
 
 def _find_all(node: TSNode, types: set[str]) -> list[TSNode]:
     matches = []
-    if node.type in types:
-        matches.append(node)
-    for child in node.children:
-        matches.extend(_find_all(child, types))
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        if current.type in types:
+            matches.append(current)
+        stack.extend(reversed(current.children))
     return matches
 
 
@@ -56,7 +58,7 @@ def _enclosing_function_name(call_node: TSNode, function_types: set[str]) -> str
     while current is not None:
         if current.type in function_types:
             name_node = current.child_by_field_name("name")
-            return name_node.text.decode("utf-8") if name_node is not None else None
+            return name_node.text.decode("utf-8", errors="replace") if name_node is not None else None
         current = current.parent
     return None
 
@@ -67,11 +69,11 @@ def _call_target_name(call_node: TSNode) -> str | None:
         return None
     if function_field.type == "attribute":  # Python obj.method()
         attr = function_field.child_by_field_name("attribute")
-        return attr.text.decode("utf-8") if attr is not None else None
+        return attr.text.decode("utf-8", errors="replace") if attr is not None else None
     if function_field.type == "member_expression":  # JS/TS obj.method()
         prop = function_field.child_by_field_name("property")
-        return prop.text.decode("utf-8") if prop is not None else None
-    return function_field.text.decode("utf-8")
+        return prop.text.decode("utf-8", errors="replace") if prop is not None else None
+    return function_field.text.decode("utf-8", errors="replace")
 
 
 def parse_file(
@@ -99,7 +101,7 @@ def parse_file(
         nodes.append(
             ParsedNode(
                 kind="function",
-                name=name_node.text.decode("utf-8"),
+                name=name_node.text.decode("utf-8", errors="replace"),
                 start_line=fn_node.start_point[0] + 1,
                 end_line=fn_node.end_point[0] + 1,
                 signature=_signature(fn_node, source),
@@ -113,7 +115,7 @@ def parse_file(
         nodes.append(
             ParsedNode(
                 kind="class",
-                name=name_node.text.decode("utf-8"),
+                name=name_node.text.decode("utf-8", errors="replace"),
                 start_line=cls_node.start_point[0] + 1,
                 end_line=cls_node.end_point[0] + 1,
                 signature=_signature(cls_node, source),
@@ -136,7 +138,7 @@ def parse_file(
             or import_node.child_by_field_name("source")
         )
         if module_field is not None:
-            text = module_field.text.decode("utf-8").strip("'\"")
+            text = module_field.text.decode("utf-8", errors="replace").strip("'\"")
             imports.append(ParsedImport(module_text=text))
 
     return nodes, calls, imports

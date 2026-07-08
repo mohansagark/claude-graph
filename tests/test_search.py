@@ -153,13 +153,13 @@ def test_like_search_results_ordered(tmp_path):
     """LIKE path: results should be ordered deterministically by name."""
     store = GraphStore(tmp_path / "graph.db")
     store.fts_enabled = False  # Force LIKE path
-    store.add_node("a.py", "function", "zebra", 1, 2, "zebra()")
-    store.add_node("a.py", "function", "apple", 1, 2, "apple()")
-    store.add_node("a.py", "function", "banana", 1, 2, "banana()")
+    store.add_node("a.py", "function", "helper_zebra", 1, 2, "helper_zebra()")
+    store.add_node("a.py", "function", "helper_apple", 1, 2, "helper_apple()")
+    store.add_node("a.py", "function", "helper_banana", 1, 2, "helper_banana()")
     store.conn.commit()
 
-    results = search_nodes(store, "")
+    results = search_nodes(store, "helper")
     names = [r["name"] for r in results]
-    # With ORDER BY name, should be in alphabetical order
-    assert names == sorted(names)
+    # All three nodes must match, in alphabetical order (ORDER BY name)
+    assert names == ["helper_apple", "helper_banana", "helper_zebra"]
     store.close()

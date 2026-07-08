@@ -128,3 +128,63 @@ def test_update_removes_deleted_file(tmp_path):
     assert stats["files"] == 0
     with GraphStore(tmp_path / ".claude-graph" / "graph.db") as store:
         assert store.find_module_node("a.py") is None
+
+
+def test_unsupported_files_get_no_ghost_module_node(tmp_path):
+    _git("init", "-q", cwd=tmp_path)
+    _write(tmp_path, "a.py", "def foo():\n    return 1\n")
+    _write(tmp_path, "README.md", "# hello\n")
+    _write(tmp_path, "data.json", "{}\n")
+    _git("add", "-A", cwd=tmp_path)
+
+    stats = build_graph(tmp_path, full_rebuild=True)
+    assert stats["nodes"] == 2  # module a.py + foo
+
+    with GraphStore(tmp_path / ".claude-graph" / "graph.db") as store:
+        assert store.find_module_node("README.md") is None
+        assert store.find_module_node("data.json") is None
+
+    (tmp_path / "a.py").unlink()
+    _git("add", "-A", cwd=tmp_path)
+    stats = update_graph(tmp_path)
+    assert stats["files"] == 0
+
+
+def test_call_caller_resolves_to_function_not_same_named_class(tmp_path):
+    _git("init", "-q", cwd=tmp_path)
+    _write(
+        tmp_path,
+        "a.py",
+        "def Foo():\n    return helper()\n\n\ndef helper():\n    return 1\n\n\nclass Foo:\n    pass\n",
+    )
+    _git("add", "-A", cwd=tmp_path)
+
+    build_graph(tmp_path, full_rebuild=True)
+
+    with GraphStore(tmp_path / ".claude-graph" / "graph.db") as store:
+        helper = store.find_nodes_by_name("helper", kind="function")[0]
+        callers = store.edges_by_dst(helper["id"], "calls")
+        assert len(callers) == 1
+        caller_node = store.get_node(callers[0]["src"])
+        assert caller_node["kind"] == "function"
+        assert caller_node["name"] == "Foo"
+
+
+def test_update_removes_stale_call_edge_when_caller_no_longer_calls(tmp_path):
+    _git("init", "-q", cwd=tmp_path)
+    _write(tmp_path, "a.py", "def helper():\n    return 1\n")
+    _write(tmp_path, "b.py", "from a import helper\n\ndef foo():\n    return helper()\n")
+    _git("add", "-A", cwd=tmp_path)
+    build_graph(tmp_path, full_rebuild=True)
+
+    with GraphStore(tmp_path / ".claude-graph" / "graph.db") as store:
+        helper = store.find_nodes_by_name("helper", kind="function")[0]
+        assert len(store.edges_by_dst(helper["id"], "calls")) == 1
+
+    _write(tmp_path, "b.py", "def foo():\n    return 2\n")
+    _git("add", "-A", cwd=tmp_path)
+    update_graph(tmp_path)
+
+    with GraphStore(tmp_path / ".claude-graph" / "graph.db") as store:
+        helper = store.find_nodes_by_name("helper", kind="function")[0]
+        assert store.edges_by_dst(helper["id"], "calls") == []

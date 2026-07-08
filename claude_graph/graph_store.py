@@ -169,12 +169,17 @@ class GraphStore:
 
     def sync_file_nodes(
         self, file: str, node_specs: list[tuple[str, str, int, int, str]]
-    ) -> dict[str, int]:
+    ) -> dict[tuple[str, str], int]:
         """Upserts each (kind, name, start_line, end_line, signature) into
         `nodes` keyed by (file, kind, name), preserving the row's id
         across calls. Any existing node for `file` whose (kind, name) is
         not in `node_specs` is deleted, along with edges touching it.
-        Returns name -> id for every node now on `file`."""
+        Returns (kind, name) -> id for every node now on `file`. Keying by
+        (kind, name) rather than name alone avoids collapsing a function
+        and a class that share a bare name in the same file into one map
+        entry (bare-name collisions across files/kinds are still an
+        accepted design tradeoff — see README — but same-file (kind,
+        name) collisions must not corrupt edge resolution)."""
         existing = {
             (row["kind"], row["name"]): row["id"]
             for row in self.conn.execute(
@@ -186,7 +191,7 @@ class GraphStore:
         stale_ids = [node_id for key, node_id in existing.items() if key not in wanted_keys]
         self._delete_nodes_and_their_edges(stale_ids)
 
-        name_to_id: dict[str, int] = {}
+        name_to_id: dict[tuple[str, str], int] = {}
         for kind, name, start_line, end_line, signature in node_specs:
             row = self.conn.execute(
                 """
@@ -200,7 +205,7 @@ class GraphStore:
                 """,
                 (file, kind, name, start_line, end_line, signature),
             ).fetchone()
-            name_to_id[name] = row["id"]
+            name_to_id[(kind, name)] = row["id"]
         return name_to_id
 
     def get_node(self, node_id: int) -> sqlite3.Row | None:

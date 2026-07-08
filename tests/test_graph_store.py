@@ -87,8 +87,8 @@ def test_sync_file_nodes_preserves_id_on_update(tmp_path):
     store.conn.commit()
     ids2 = store.sync_file_nodes("a.py", [("function", "foo", 1, 3, "def foo(x):")])
     store.conn.commit()
-    assert ids1["foo"] == ids2["foo"]
-    row = store.get_node(ids2["foo"])
+    assert ids1[("function", "foo")] == ids2[("function", "foo")]
+    row = store.get_node(ids2[("function", "foo")])
     assert row["end_line"] == 3
     assert row["signature"] == "def foo(x):"
     store.close()
@@ -100,14 +100,28 @@ def test_sync_file_nodes_removes_stale_nodes_and_their_edges(tmp_path):
         "a.py", [("function", "foo", 1, 2, ""), ("function", "bar", 3, 4, "")]
     )
     other = store.add_node("b.py", "function", "caller", 1, 2, "")
-    store.add_edge(other, ids1["bar"], "calls")
+    store.add_edge(other, ids1[("function", "bar")], "calls")
     store.conn.commit()
 
     ids2 = store.sync_file_nodes("a.py", [("function", "foo", 1, 2, "")])  # bar removed
     store.conn.commit()
 
-    assert "bar" not in ids2
-    assert store.edges_by_dst(ids1["bar"], "calls") == []
+    assert ("function", "bar") not in ids2
+    assert store.edges_by_dst(ids1[("function", "bar")], "calls") == []
+    store.close()
+
+
+def test_sync_file_nodes_keys_by_kind_and_name_not_name_alone(tmp_path):
+    store = GraphStore(tmp_path / "graph.db")
+    ids = store.sync_file_nodes(
+        "a.py", [("function", "Foo", 1, 2, ""), ("class", "Foo", 3, 5, "")]
+    )
+    store.conn.commit()
+    assert ("function", "Foo") in ids
+    assert ("class", "Foo") in ids
+    assert ids[("function", "Foo")] != ids[("class", "Foo")]
+    assert store.get_node(ids[("function", "Foo")])["kind"] == "function"
+    assert store.get_node(ids[("class", "Foo")])["kind"] == "class"
     store.close()
 
 

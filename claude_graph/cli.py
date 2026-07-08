@@ -50,6 +50,13 @@ def _cmd_install(args: argparse.Namespace) -> None:
     print(json.dumps(result, indent=2))
 
 
+def _cmd_serve(args: argparse.Namespace) -> None:
+    repo_root = _resolve_repo_root(args.repo)
+    from claude_graph.mcp_server import serve
+
+    serve(repo_root)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="claude-graph")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -59,6 +66,7 @@ def build_parser() -> argparse.ArgumentParser:
         ("update", _cmd_update),
         ("status", _cmd_status),
         ("install", _cmd_install),
+        ("serve", _cmd_serve),
     ):
         sub = subparsers.add_parser(name)
         sub.add_argument("--repo", default=None, help="Repository root (default: current directory)")

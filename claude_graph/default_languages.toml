@@ -1,2 +1,31 @@
-# Default language configurations for claude-graph
-# To be populated in later tasks
+[languages.python]
+extensions = [".py"]
+grammar = "python"
+function_node_types = ["function_definition"]
+class_node_types = ["class_definition"]
+import_node_types = ["import_statement", "import_from_statement"]
+call_node_types = ["call"]
+
+[languages.typescript]
+extensions = [".ts"]
+grammar = "typescript"
+function_node_types = ["function_declaration", "method_definition"]
+class_node_types = ["class_declaration"]
+import_node_types = ["import_statement"]
+call_node_types = ["call_expression"]
+
+[languages.tsx]
+extensions = [".tsx"]
+grammar = "tsx"
+function_node_types = ["function_declaration", "method_definition"]
+class_node_types = ["class_declaration"]
+import_node_types = ["import_statement"]
+call_node_types = ["call_expression"]
+
+[languages.javascript]
+extensions = [".js", ".jsx", ".mjs", ".cjs"]
+grammar = "javascript"
+function_node_types = ["function_declaration", "method_definition"]
+class_node_types = ["class_declaration"]
+import_node_types = ["import_statement"]
+call_node_types = ["call_expression"]

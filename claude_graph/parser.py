@@ -4,6 +4,7 @@ LanguageConfig so adding a language needs no code change here."""
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -142,3 +143,59 @@ def parse_file(
             imports.append(ParsedImport(module_text=text))
 
     return nodes, calls, imports
+
+
+_TEST_SUFFIXES = (".test", ".spec")
+
+
+def find_tested_file(test_path: str, all_files: set[str]) -> str | None:
+    """Best-effort match of a test file to the file it tests, by naming
+    convention only (test_foo.py <-> foo.py, foo_test.py <-> foo.py,
+    foo.spec.ts / foo.test.ts <-> foo.ts). Returns None if no convention
+    matches or no candidate file exists."""
+    p = Path(test_path)
+    stem = p.stem
+    directory = str(p.parent)
+
+    candidate_stems: list[str] = []
+    if stem.startswith("test_"):
+        candidate_stems.append(stem[len("test_"):])
+    if stem.endswith("_test"):
+        candidate_stems.append(stem[: -len("_test")])
+    for suffix in _TEST_SUFFIXES:
+        if stem.endswith(suffix):
+            candidate_stems.append(stem[: -len(suffix)])
+
+    for candidate_stem in candidate_stems:
+        for ext in (p.suffix, ".py", ".ts", ".tsx", ".js", ".jsx"):
+            candidate_path = str(Path(directory) / f"{candidate_stem}{ext}")
+            if candidate_path in all_files:
+                return candidate_path
+    return None
+
+
+def resolve_import(importer_file: str, module_text: str, all_files: set[str]) -> str | None:
+    """Best-effort resolution of an import's module text to a tracked
+    file path, by trying common relative-path (JS/TS) and dotted-package
+    (Python) conventions. Returns None rather than guessing when nothing
+    tracked matches (e.g. a third-party package)."""
+    importer_dir = Path(importer_file).parent
+
+    if module_text.startswith("."):
+        base = os.path.normpath(str(importer_dir / module_text))
+        candidates = [f"{base}{ext}" for ext in (".ts", ".tsx", ".js", ".jsx", ".py")]
+        candidates += [f"{base}/index{ext}" for ext in (".ts", ".tsx", ".js", ".jsx")]
+    else:
+        as_path = module_text.replace(".", "/")
+        candidates = [
+            f"{as_path}.py",
+            f"{as_path}/__init__.py",
+            f"{as_path}.ts",
+            f"{as_path}.tsx",
+            f"{as_path}.js",
+        ]
+
+    for candidate in candidates:
+        if candidate in all_files:
+            return candidate
+    return None

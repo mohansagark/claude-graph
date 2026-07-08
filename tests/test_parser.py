@@ -65,3 +65,41 @@ def test_parse_deeply_nested_file_does_not_recursion_error(tmp_path):
     deep.write_text("x = " + "(" * depth + "1" + ")" * depth + "\n")
     nodes, calls, imports = parse_file(deep, config)
     assert nodes == []
+
+
+from claude_graph.parser import find_tested_file, resolve_import
+
+
+def test_find_tested_file_python_prefix_convention():
+    all_files = {"foo.py", "test_foo.py"}
+    assert find_tested_file("test_foo.py", all_files) == "foo.py"
+
+
+def test_find_tested_file_python_suffix_convention():
+    all_files = {"foo.py", "foo_test.py"}
+    assert find_tested_file("foo_test.py", all_files) == "foo.py"
+
+
+def test_find_tested_file_js_spec_convention():
+    all_files = {"foo.ts", "foo.spec.ts"}
+    assert find_tested_file("foo.spec.ts", all_files) == "foo.ts"
+
+
+def test_find_tested_file_returns_none_when_no_match():
+    all_files = {"test_foo.py"}
+    assert find_tested_file("test_foo.py", all_files) is None
+
+
+def test_resolve_relative_import():
+    all_files = {"src/foo.ts", "src/bar.ts"}
+    assert resolve_import("src/bar.ts", "./foo", all_files) == "src/foo.ts"
+
+
+def test_resolve_python_dotted_import():
+    all_files = {"pkg/foo.py", "pkg/bar.py", "pkg/__init__.py"}
+    assert resolve_import("pkg/bar.py", "pkg.foo", all_files) == "pkg/foo.py"
+
+
+def test_resolve_import_returns_none_for_third_party():
+    all_files = {"pkg/bar.py"}
+    assert resolve_import("pkg/bar.py", "requests", all_files) is None

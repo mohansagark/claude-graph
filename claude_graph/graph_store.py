@@ -107,6 +107,17 @@ class GraphStore:
             self.conn.rollback()
             raise
 
+    def _delete_nodes_and_their_edges(self, node_ids: list[int]) -> None:
+        """Delete nodes and all edges touching them. No-op on empty list."""
+        if not node_ids:
+            return
+        placeholders = ",".join("?" for _ in node_ids)
+        self.conn.execute(
+            f"DELETE FROM edges WHERE src IN ({placeholders}) OR dst IN ({placeholders})",
+            (*node_ids, *node_ids),
+        )
+        self.conn.execute(f"DELETE FROM nodes WHERE id IN ({placeholders})", node_ids)
+
     # -- files ----------------------------------------------------------
 
     def upsert_file(self, path: str, file_hash: str, language: str) -> None:
@@ -139,13 +150,7 @@ class GraphStore:
         node_ids = [
             row["id"] for row in self.conn.execute("SELECT id FROM nodes WHERE file = ?", (path,)).fetchall()
         ]
-        if node_ids:
-            placeholders = ",".join("?" for _ in node_ids)
-            self.conn.execute(
-                f"DELETE FROM edges WHERE src IN ({placeholders}) OR dst IN ({placeholders})",
-                (*node_ids, *node_ids),
-            )
-            self.conn.execute(f"DELETE FROM nodes WHERE id IN ({placeholders})", node_ids)
+        self._delete_nodes_and_their_edges(node_ids)
         self.conn.execute("DELETE FROM files WHERE path = ?", (path,))
 
     # -- nodes ------------------------------------------------------------
@@ -179,13 +184,7 @@ class GraphStore:
         wanted_keys = {(kind, name) for kind, name, *_ in node_specs}
 
         stale_ids = [node_id for key, node_id in existing.items() if key not in wanted_keys]
-        if stale_ids:
-            placeholders = ",".join("?" for _ in stale_ids)
-            self.conn.execute(
-                f"DELETE FROM edges WHERE src IN ({placeholders}) OR dst IN ({placeholders})",
-                (*stale_ids, *stale_ids),
-            )
-            self.conn.execute(f"DELETE FROM nodes WHERE id IN ({placeholders})", stale_ids)
+        self._delete_nodes_and_their_edges(stale_ids)
 
         name_to_id: dict[str, int] = {}
         for kind, name, start_line, end_line, signature in node_specs:

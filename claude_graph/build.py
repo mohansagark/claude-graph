@@ -67,11 +67,20 @@ def update_graph(repo_root: Path) -> dict:
             for deleted in known_files - all_files:
                 store.clear_file(deleted)
 
-            changed_or_new = [
-                path
-                for path in tracked_files
-                if store.get_file_hash(path) != _file_hash(repo_root / path)
-            ]
+            changed_or_new = []
+            for path in tracked_files:
+                try:
+                    current_hash = _file_hash(repo_root / path)
+                except OSError as exc:
+                    # Unreadable tracked file (e.g. a broken symlink or a
+                    # permission-restricted file): skip it for this
+                    # update, same as pass 2 of _sync_files does for a
+                    # file that fails mid-parse. Any existing DB entry for
+                    # this path is left untouched, not crashed on.
+                    print(f"warning: skipping {path}: {exc}", file=sys.stderr)
+                    continue
+                if store.get_file_hash(path) != current_hash:
+                    changed_or_new.append(path)
             _sync_files(store, repo_root, tracked_files, changed_or_new)
         return store.stats()
 
@@ -109,6 +118,17 @@ def _sync_files(
             nodes, calls, imports = parse_file(abs_path, config)
         except OSError as exc:
             print(f"warning: skipping {rel_path}: {exc}", file=sys.stderr)
+            # If this file never had a `files` row, it's genuinely new
+            # (not previously readable/parsed), so pass 1's placeholder
+            # module node above is a ghost with no chance of ever being
+            # backed by real data — remove it now rather than leave it
+            # invisible to update_graph's deleted-file cleanup (which
+            # only looks at store.all_file_paths(), backed by `files`).
+            # A file that *did* have a prior `files` row (readable once,
+            # unreadable now) keeps its old data untouched instead of
+            # being wiped by a transient read failure.
+            if store.get_file_hash(rel_path) is None:
+                store.clear_file(rel_path)
             continue
 
         node_specs = [("module", rel_path, 1, max((n.end_line for n in nodes), default=1), "")]

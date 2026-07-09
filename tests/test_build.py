@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 
@@ -168,6 +169,39 @@ def test_call_caller_resolves_to_function_not_same_named_class(tmp_path):
         caller_node = store.get_node(callers[0]["src"])
         assert caller_node["kind"] == "function"
         assert caller_node["name"] == "Foo"
+
+
+def test_broken_symlink_is_skipped_not_crashed_and_leaves_no_ghost_node(tmp_path):
+    _git("init", "-q", cwd=tmp_path)
+    _write(tmp_path, "a.py", "def foo():\n    return 1\n")
+    os.symlink("does-not-exist.py", tmp_path / "broken.py")
+    _git("add", "-A", cwd=tmp_path)
+
+    # build_graph must warn+skip, not raise, and must not leave a ghost
+    # module node for the unreadable file (same bug class as 55b41dc).
+    stats = build_graph(tmp_path, full_rebuild=True)
+    assert stats["files"] == 1  # only a.py
+
+    with GraphStore(tmp_path / ".claude-graph" / "graph.db") as store:
+        assert store.find_module_node("broken.py") is None
+
+    # update_graph must not crash trying to hash the broken symlink, and
+    # must leave things clean (no ghost node reappears).
+    stats = update_graph(tmp_path)
+    assert stats["files"] == 1
+
+    with GraphStore(tmp_path / ".claude-graph" / "graph.db") as store:
+        assert store.find_module_node("broken.py") is None
+
+    # Deleting the broken symlink and updating again must still not crash
+    # and must remain clean.
+    (tmp_path / "broken.py").unlink()
+    _git("add", "-A", cwd=tmp_path)
+    stats = update_graph(tmp_path)
+    assert stats["files"] == 1
+
+    with GraphStore(tmp_path / ".claude-graph" / "graph.db") as store:
+        assert store.find_module_node("broken.py") is None
 
 
 def test_update_removes_stale_call_edge_when_caller_no_longer_calls(tmp_path):

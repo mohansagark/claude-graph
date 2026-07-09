@@ -26,8 +26,8 @@ happens locally, with zero network calls, ever.**
 - No telemetry, no daemon, no multi-repo registry.
 
 See `tests/test_no_network.py` for the automated proof: it runs a full
-build + query + impact + search cycle with outbound sockets disabled
-and asserts nothing tries to connect anywhere.
+build + query + impact + search + MCP server startup cycle with outbound
+sockets disabled and asserts nothing tries to connect anywhere.
 
 ## Requirements
 

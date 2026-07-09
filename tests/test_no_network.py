@@ -1,9 +1,14 @@
 """Proof that claude-graph never makes a network call during normal
-operation: build, query, impact, and search all succeed with outbound
-sockets disabled."""
+operation: build, query, impact, search, and MCP server startup all
+succeed with outbound sockets disabled.
+
+Note: subprocess children spawned by claude-graph (e.g., git ls-files)
+are outside the monkeypatch's reach and may make network calls, but
+claude-graph's core Python code never does."""
 
 from __future__ import annotations
 
+import asyncio
 import socket
 import subprocess
 from pathlib import Path
@@ -13,6 +18,7 @@ import pytest
 from claude_graph.build import build_graph
 from claude_graph.graph_store import GraphStore
 from claude_graph.impact import get_impact_radius
+from claude_graph.mcp_server import create_server
 from claude_graph.query import query_graph
 from claude_graph.search import search_nodes
 
@@ -44,3 +50,8 @@ def test_full_workflow_makes_no_network_calls(tmp_path, no_network):
         assert search_nodes(store, "foo") != []
         impact = get_impact_radius(store, ["a.py"])
         assert impact["changed_files"] == ["a.py"]
+
+    # Test MCP server startup (construction registers all 5 tools)
+    app = create_server(tmp_path)
+    tools = asyncio.run(app.list_tools())
+    assert len(tools) == 5

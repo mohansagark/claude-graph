@@ -74,6 +74,35 @@ def test_get_impact_radius_tool(tmp_path):
     assert impact["changed_files"] == ["a.py"]
 
 
+def test_get_impact_radius_tool_exposes_depth_in_schema(tmp_path):
+    repo = _make_repo(tmp_path)
+    app = create_server(repo)
+    tools = asyncio.run(app.list_tools())
+    impact_tool = next(t for t in tools if t.name == "get_impact_radius_tool")
+    assert "depth" in impact_tool.inputSchema["properties"]
+
+
+def test_get_impact_radius_tool_depth_limits_callers(tmp_path):
+    # c() <- b() <- a(): a two-hop caller chain into c.py.
+    repo = tmp_path
+    _git("init", "-q", cwd=repo)
+    (repo / "c.py").write_text("def c():\n    return 1\n")
+    (repo / "b.py").write_text("from c import c\n\ndef b():\n    return c()\n")
+    (repo / "a.py").write_text("from b import b\n\ndef a():\n    return b()\n")
+    _git("add", "-A", cwd=repo)
+
+    app = create_server(repo)
+    _call(app, "build_or_update_graph", {})
+
+    shallow = _call(app, "get_impact_radius_tool", {"changed_files": ["c.py"], "depth": 1})
+    shallow_names = {c["name"] for c in shallow["callers"]}
+    assert shallow_names == {"b"}
+
+    deep = _call(app, "get_impact_radius_tool", {"changed_files": ["c.py"], "depth": 2})
+    deep_names = {c["name"] for c in deep["callers"]}
+    assert deep_names == {"a", "b"}
+
+
 def test_get_graph_stats_before_build_returns_zeroes(tmp_path):
     repo = _make_repo(tmp_path)
     app = create_server(repo)

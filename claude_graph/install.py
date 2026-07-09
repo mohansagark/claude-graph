@@ -48,7 +48,7 @@ def _install_mcp_config(repo_root: Path) -> Path:
     config.setdefault("mcpServers", {})
     config["mcpServers"]["claude-graph"] = {
         "command": "claude-graph",
-        "args": ["serve", "--repo", str(repo_root)],
+        "args": ["serve"],
     }
     config_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     return config_path

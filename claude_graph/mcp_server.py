@@ -47,11 +47,13 @@ def create_server(repo_root: Path) -> FastMCP:
         return {"pattern": pattern, "target": target, "result": result}
 
     @app.tool()
-    def get_impact_radius_tool(changed_files: list[str]) -> dict:
+    def get_impact_radius_tool(changed_files: list[str], depth: int = 2) -> dict:
         """Blast radius of the given changed file paths: callers,
-        importers, and tests that could be affected."""
+        importers, and tests that could be affected. `depth` controls how
+        many hops of the `calls` graph to walk backwards from the changed
+        files when collecting callers (default 2)."""
         with GraphStore(_db_path(repo_root)) as store:
-            return get_impact_radius(store, changed_files)
+            return get_impact_radius(store, changed_files, depth=depth)
 
     @app.tool()
     def search_nodes_tool(query: str) -> list[dict]:

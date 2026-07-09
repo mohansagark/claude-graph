@@ -139,6 +139,10 @@ function/class/import/call for that grammar). No code change needed.
 - Import resolution is best-effort path matching, not real module
   resolution — it won't follow `tsconfig.json` path aliases or Python
   namespace packages.
+- Incremental `update` only re-links edges for files whose content
+  changed. If you move a symbol to another file, calls into it from
+  files you didn't touch keep pointing at the old resolution until the
+  next full `claude-graph build`.
 
 ## For teammates installing this themselves
 

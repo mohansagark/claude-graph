@@ -25,7 +25,7 @@ def search_nodes(store: GraphStore, query: str, limit: int = 20) -> list[dict]:
         SELECT nodes.file, nodes.kind, nodes.name, nodes.start_line
         FROM nodes_fts
         JOIN nodes ON nodes.id = nodes_fts.rowid
-        WHERE nodes_fts MATCH ?
+        WHERE nodes_fts MATCH ? AND nodes.kind != 'module'
         ORDER BY rank
         LIMIT ?
         """,
@@ -65,7 +65,7 @@ def _fallback_like_search(store: GraphStore, query: str, limit: int) -> list[dic
     rows = store.conn.execute(
         """
         SELECT file, kind, name, start_line FROM nodes
-        WHERE name LIKE ? ESCAPE '\\' OR signature LIKE ? ESCAPE '\\'
+        WHERE (name LIKE ? ESCAPE '\\' OR signature LIKE ? ESCAPE '\\') AND kind != 'module'
         ORDER BY name
         LIMIT ?
         """,

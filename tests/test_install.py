@@ -7,7 +7,7 @@ def test_install_writes_mcp_config(tmp_path):
     install_claude_code(tmp_path)
     config = json.loads((tmp_path / ".mcp.json").read_text())
     assert config["mcpServers"]["claude-graph"]["command"] == "claude-graph"
-    assert config["mcpServers"]["claude-graph"]["args"] == ["serve", "--repo", str(tmp_path)]
+    assert config["mcpServers"]["claude-graph"]["args"] == ["serve"]
 
 
 def test_install_writes_skills(tmp_path):

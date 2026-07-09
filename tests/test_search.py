@@ -15,6 +15,33 @@ def test_search_finds_node_by_name_substring(tmp_path):
     store.close()
 
 
+def test_search_excludes_module_nodes_fts(tmp_path):
+    """Search covers function/class names and signatures only — module
+    nodes (name = file path) must not show up as results."""
+    store = GraphStore(tmp_path / "graph.db")
+    store.add_node("parse_utils.py", "module", "parse_utils.py", 1, 1, "")
+    store.add_node("parse_utils.py", "function", "parse_helper", 1, 2, "parse_helper()")
+    store.conn.commit()
+
+    results = search_nodes(store, "parse_utils")
+
+    assert not any(r["kind"] == "module" for r in results)
+    store.close()
+
+
+def test_search_excludes_module_nodes_like_fallback(tmp_path):
+    store = GraphStore(tmp_path / "graph.db")
+    store.fts_enabled = False  # Force LIKE path
+    store.add_node("parse_utils.py", "module", "parse_utils.py", 1, 1, "")
+    store.add_node("parse_utils.py", "function", "parse_helper", 1, 2, "parse_helper()")
+    store.conn.commit()
+
+    results = search_nodes(store, "parse_utils")
+
+    assert not any(r["kind"] == "module" for r in results)
+    store.close()
+
+
 def test_search_respects_limit(tmp_path):
     store = GraphStore(tmp_path / "graph.db")
     for i in range(5):

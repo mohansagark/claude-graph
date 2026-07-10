@@ -1,11 +1,19 @@
 # claude-graph
 
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Network calls](https://img.shields.io/badge/network%20calls-zero-success)
+![Tests](https://img.shields.io/badge/tests-111%20passing-brightgreen)
+
 A local knowledge graph of your codebase, built specifically for
 **Claude Code on macOS**. Parses your repo with Tree-sitter, stores a
 structural graph (functions, classes, calls, imports, test coverage) in
 a local SQLite file, and exposes it to Claude Code over MCP so it can
 answer "what calls this", "what would break if I change this file", and
-"is this covered by a test" without reading the whole repo.
+"is this covered by a test" — without reading the whole repo.
+
+![claude-graph interactive visualization](docs/images/graph-demo.png)
 
 ## Why this exists, and what it deliberately doesn't do
 
@@ -29,6 +37,19 @@ See `tests/test_no_network.py` for the automated proof: it runs a full
 build + query + impact + search + viz + MCP server startup cycle with
 outbound sockets disabled and asserts nothing tries to connect anywhere.
 
+## Contents
+
+- [Requirements](#requirements)
+- [Install](#install)
+- [CLI](#cli)
+- [MCP tools](#mcp-tools)
+- [Graph visualization](#graph-visualization)
+- [Supported languages](#supported-languages)
+- [How calls are resolved](#how-calls-are-resolved)
+- [Search behavior](#search-behavior)
+- [Known limitations](#known-limitations)
+- [For teammates installing this themselves](#for-teammates-installing-this-themselves)
+
 ## Requirements
 
 - macOS
@@ -38,7 +59,7 @@ outbound sockets disabled and asserts nothing tries to connect anywhere.
 ## Install
 
 ```bash
-git clone <this-repo-url>
+git clone https://github.com/mohansagark/claude-graph.git
 cd claude-graph
 pip install -e .
 ```
@@ -73,6 +94,9 @@ first) before expecting real answers.
 | `claude-graph serve` | Starts the MCP server (stdio) — Claude Code launches this itself |
 | `claude-graph viz` | Render an interactive HTML graph view (`--symbol NAME` or `--impact FILE...` to scope it, `-o PATH` to change the output path) |
 
+Every command accepts `--repo PATH` to target a repo other than the
+current directory.
+
 ## MCP tools
 
 | Tool | Purpose |
@@ -90,20 +114,25 @@ first) before expecting real answers.
 self-contained HTML file to `.claude-graph/graph.html` — open it directly in
 a browser via `file://`, no server involved. It embeds a vendored copy of
 D3 (ISC license) directly into the file, so it works fully offline, same as
-everything else in this tool.
+everything else in this tool. The screenshot above is real output — a small
+demo app rendered with `claude-graph viz`, no scoping.
 
-- `claude-graph viz` — the whole graph.
-- `claude-graph viz --symbol NAME` — just that function/class's direct
-  callers, callees, and its file's imports.
-- `claude-graph viz --impact FILE [FILE...] [--depth N]` — the impact
-  radius of those changed files (same data as `get_impact_radius_tool`, laid
-  out visually).
+```bash
+claude-graph viz                              # the whole graph
+claude-graph viz --symbol NAME                # a function/class's direct
+                                               # callers, callees, and its
+                                               # file's imports
+claude-graph viz --impact FILE [FILE...]      # the impact radius of those
+                  [--depth N]                  # changed files, laid out
+                                               # visually
+claude-graph viz -o custom/path.html          # change the output path
+```
 
 Click a node to highlight its direct neighborhood and see its file/line in
 a side panel; drag to reposition; scroll to zoom; type in the search box to
 find a node by name. There's no node cap yet, so a whole-repo view on a very
-large codebase (thousands of nodes) may render slowly — see Known
-limitations.
+large codebase (thousands of nodes) may render slowly — see
+[Known limitations](#known-limitations).
 
 ## Supported languages
 
@@ -168,14 +197,21 @@ function/class/import/call for that grammar). No code change needed.
   next full `claude-graph build`.
 - `claude-graph viz`'s whole-graph view has no node cap. On a very large
   codebase this can be slow or cluttered in the browser; scope it with
-  `--symbol` or `--impact` for a focused view instead.
+  `--symbol` or `--impact` for a focused view instead. It can also pick
+  up vendored/minified third-party files checked into the repo (e.g. a
+  bundled `.js` library) as noisy, densely-connected nodes — exclude
+  them via `.claude-graph/languages.toml` if that happens.
 
 ## For teammates installing this themselves
 
 ```bash
-git clone <this-repo-url>
+git clone https://github.com/mohansagark/claude-graph.git
 cd claude-graph
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest
 ```
+
+## License
+
+[MIT](LICENSE)

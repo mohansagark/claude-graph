@@ -72,7 +72,7 @@ going through PyPI, each
 the wheel as a downloadable asset:
 
 ```bash
-pip install https://github.com/mohansagark/claude-graph/releases/download/v0.1.1/claude_graph-0.1.1-py3-none-any.whl
+pip install https://github.com/mohansagark/claude-graph/releases/download/v0.1.2/claude_graph-0.1.2-py3-none-any.whl
 ```
 
 Or from source, for local development or to track `main`:

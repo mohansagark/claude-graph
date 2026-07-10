@@ -59,13 +59,91 @@ def _full_graph(store: GraphStore) -> tuple[list[dict], list[dict], list[int]]:
 
 
 def _symbol_neighborhood(store: GraphStore, symbol: str) -> tuple[list[dict], list[dict], list[int]]:
-    raise NotImplementedError  # implemented in Task 3
+    targets = list(store.find_nodes_by_name(symbol, kind="function")) + list(
+        store.find_nodes_by_name(symbol, kind="class")
+    )
+    if not targets:
+        return [], [], []
+
+    node_rows = {row["id"]: row for row in targets}
+    edges: list[dict] = []
+
+    for target in targets:
+        for edge in store.edges_by_dst(target["id"], "calls"):
+            src = store.get_node(edge["src"])
+            if src is not None:
+                node_rows[src["id"]] = src
+                edges.append({"source": src["id"], "target": target["id"], "kind": "calls"})
+        for edge in store.edges_by_src(target["id"], "calls"):
+            dst = store.get_node(edge["dst"])
+            if dst is not None:
+                node_rows[dst["id"]] = dst
+                edges.append({"source": target["id"], "target": dst["id"], "kind": "calls"})
+        module = store.find_module_node(target["file"])
+        if module is not None:
+            node_rows[module["id"]] = module
+            for edge in store.edges_by_src(module["id"], "imports"):
+                dst = store.get_node(edge["dst"])
+                if dst is not None:
+                    node_rows[dst["id"]] = dst
+                    edges.append({"source": module["id"], "target": dst["id"], "kind": "imports"})
+
+    nodes = [_node_dict(row) for row in node_rows.values()]
+    highlight_ids = [t["id"] for t in targets]
+    return nodes, edges, highlight_ids
 
 
 def _impact_neighborhood(
     store: GraphStore, changed_files: list[str], depth: int
 ) -> tuple[list[dict], list[dict], list[int]]:
-    raise NotImplementedError  # implemented in Task 3
+    seed_rows = {}
+    for file in changed_files:
+        for row in store.nodes_for_file(file):
+            seed_rows[row["id"]] = row
+    if not seed_rows:
+        return [], [], []
+
+    node_rows = dict(seed_rows)
+    edges: list[dict] = []
+
+    frontier = set(seed_rows.keys())
+    seen = set(frontier)
+    for _ in range(depth):
+        next_frontier: set[int] = set()
+        for node_id in frontier:
+            for edge in store.edges_by_dst(node_id, "calls"):
+                src = store.get_node(edge["src"])
+                if src is not None:
+                    node_rows[src["id"]] = src
+                    edges.append({"source": src["id"], "target": node_id, "kind": "calls"})
+                    if src["id"] not in seen:
+                        seen.add(src["id"])
+                        next_frontier.add(src["id"])
+        frontier = next_frontier
+        if not frontier:
+            break
+
+    for file in changed_files:
+        module = store.find_module_node(file)
+        if module is None:
+            continue
+        node_rows[module["id"]] = module
+        for edge in store.edges_by_dst(module["id"], "imports"):
+            src = store.get_node(edge["src"])
+            if src is not None:
+                node_rows[src["id"]] = src
+                edges.append({"source": src["id"], "target": module["id"], "kind": "imports"})
+
+    for node_id in list(seed_rows.keys()):
+        for edge in store.edges_by_dst(node_id, "tests_for"):
+            src = store.get_node(edge["src"])
+            if src is not None:
+                node_rows[src["id"]] = src
+                edges.append({"source": src["id"], "target": node_id, "kind": "tests_for"})
+
+    nodes = [_node_dict(row) for row in node_rows.values()]
+    highlight_ids = list(seed_rows.keys())
+    return nodes, edges, highlight_ids
 
 
 def _render_html(payload: dict) -> str:

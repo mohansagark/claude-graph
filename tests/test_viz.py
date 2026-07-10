@@ -86,3 +86,122 @@ def test_render_graph_invalid_scope_raises(tmp_path):
             assert False, "expected ValueError"
         except ValueError:
             pass
+
+
+def _embedded_payload_from_path(output: Path) -> dict:
+    return _embedded_payload(output.read_text(encoding="utf-8"))
+
+
+def test_render_graph_symbol_scope_includes_caller_and_callee(tmp_path):
+    _git("init", "-q", cwd=tmp_path)
+    (tmp_path / "a.py").write_text(
+        "def top():\n    return mid()\n\ndef mid():\n    return bottom()\n\ndef bottom():\n    return 1\n"
+    )
+    _git("add", "-A", cwd=tmp_path)
+    build_graph(tmp_path, full_rebuild=True)
+    output = tmp_path / ".claude-graph" / "graph.html"
+
+    with GraphStore(tmp_path / ".claude-graph" / "graph.db") as store:
+        result = render_graph(store, output, scope="symbol", symbol="mid")
+
+    payload = _embedded_payload_from_path(output)
+    names = {n["name"] for n in payload["nodes"]}
+    assert "mid" in names
+    assert "top" in names  # caller
+    assert "bottom" in names  # callee
+    assert result["node_count"] == len(payload["nodes"])
+
+
+def test_render_graph_symbol_scope_highlights_target(tmp_path):
+    _git("init", "-q", cwd=tmp_path)
+    (tmp_path / "a.py").write_text("def foo():\n    return bar()\n\ndef bar():\n    return 1\n")
+    _git("add", "-A", cwd=tmp_path)
+    build_graph(tmp_path, full_rebuild=True)
+    output = tmp_path / ".claude-graph" / "graph.html"
+
+    with GraphStore(tmp_path / ".claude-graph" / "graph.db") as store:
+        render_graph(store, output, scope="symbol", symbol="foo")
+
+    payload = _embedded_payload_from_path(output)
+    highlighted_names = {n["name"] for n in payload["nodes"] if n["id"] in payload["highlight_ids"]}
+    assert highlighted_names == {"foo"}
+
+
+def test_render_graph_symbol_scope_unknown_symbol_is_empty(tmp_path):
+    repo = _make_repo(tmp_path)
+    output = repo / ".claude-graph" / "graph.html"
+    with GraphStore(repo / ".claude-graph" / "graph.db") as store:
+        result = render_graph(store, output, scope="symbol", symbol="nope")
+    assert result["node_count"] == 0
+    assert result["edge_count"] == 0
+
+
+def test_render_graph_impact_scope_includes_transitive_caller(tmp_path):
+    _git("init", "-q", cwd=tmp_path)
+    (tmp_path / "a.py").write_text("def top():\n    return mid()\n\ndef mid():\n    return low()\n")
+    (tmp_path / "b.py").write_text("def low():\n    return 1\n")
+    _git("add", "-A", cwd=tmp_path)
+    build_graph(tmp_path, full_rebuild=True)
+    output = tmp_path / ".claude-graph" / "graph.html"
+
+    with GraphStore(tmp_path / ".claude-graph" / "graph.db") as store:
+        result = render_graph(store, output, scope="impact", changed_files=["b.py"], depth=2)
+
+    payload = _embedded_payload_from_path(output)
+    names = {n["name"] for n in payload["nodes"]}
+    assert "mid" in names
+    assert "top" in names
+    assert result["node_count"] == len(payload["nodes"])
+
+
+def test_render_graph_impact_scope_highlights_changed_file_nodes(tmp_path):
+    _git("init", "-q", cwd=tmp_path)
+    (tmp_path / "a.py").write_text("from b import helper\n\ndef main():\n    return helper()\n")
+    (tmp_path / "b.py").write_text("def helper():\n    return 1\n")
+    _git("add", "-A", cwd=tmp_path)
+    build_graph(tmp_path, full_rebuild=True)
+    output = tmp_path / ".claude-graph" / "graph.html"
+
+    with GraphStore(tmp_path / ".claude-graph" / "graph.db") as store:
+        render_graph(store, output, scope="impact", changed_files=["b.py"])
+
+    payload = _embedded_payload_from_path(output)
+    highlighted_names = {n["name"] for n in payload["nodes"] if n["id"] in payload["highlight_ids"]}
+    assert "helper" in highlighted_names
+
+
+def test_render_graph_impact_scope_includes_importer(tmp_path):
+    _git("init", "-q", cwd=tmp_path)
+    (tmp_path / "a.py").write_text("from b import helper\n")
+    (tmp_path / "b.py").write_text("def helper():\n    return 1\n")
+    _git("add", "-A", cwd=tmp_path)
+    build_graph(tmp_path, full_rebuild=True)
+    output = tmp_path / ".claude-graph" / "graph.html"
+
+    with GraphStore(tmp_path / ".claude-graph" / "graph.db") as store:
+        render_graph(store, output, scope="impact", changed_files=["b.py"])
+
+    payload = _embedded_payload_from_path(output)
+    assert any(n["file"] == "a.py" for n in payload["nodes"])
+
+
+def test_render_graph_missing_symbol_arg_raises(tmp_path):
+    repo = _make_repo(tmp_path)
+    output = repo / ".claude-graph" / "graph.html"
+    with GraphStore(repo / ".claude-graph" / "graph.db") as store:
+        try:
+            render_graph(store, output, scope="symbol")
+            assert False, "expected ValueError"
+        except ValueError:
+            pass
+
+
+def test_render_graph_missing_changed_files_arg_raises(tmp_path):
+    repo = _make_repo(tmp_path)
+    output = repo / ".claude-graph" / "graph.html"
+    with GraphStore(repo / ".claude-graph" / "graph.db") as store:
+        try:
+            render_graph(store, output, scope="impact")
+            assert False, "expected ValueError"
+        except ValueError:
+            pass

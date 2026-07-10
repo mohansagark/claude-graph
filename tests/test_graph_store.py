@@ -140,3 +140,29 @@ def test_clear_outgoing_edges_only_removes_edges_sourced_from_given_nodes(tmp_pa
     assert store.edges_by_src(a, "calls") == []
     assert len(store.edges_by_dst(a, "calls")) == 1
     store.close()
+
+
+def test_all_nodes_returns_every_node(tmp_path):
+    store = GraphStore(tmp_path / "graph.db")
+    store.add_node("a.py", "function", "foo", 1, 2, "")
+    store.add_node("b.py", "class", "Bar", 1, 4, "")
+    store.conn.commit()
+
+    names = {row["name"] for row in store.all_nodes()}
+    assert names == {"foo", "Bar"}
+    store.close()
+
+
+def test_all_edges_returns_every_edge(tmp_path):
+    store = GraphStore(tmp_path / "graph.db")
+    a = store.add_node("a.py", "function", "foo", 1, 2, "")
+    b = store.add_node("b.py", "function", "bar", 1, 2, "")
+    store.add_edge(a, b, "calls")
+    store.conn.commit()
+
+    edges = store.all_edges()
+    assert len(edges) == 1
+    assert edges[0]["src"] == a
+    assert edges[0]["dst"] == b
+    assert edges[0]["kind"] == "calls"
+    store.close()

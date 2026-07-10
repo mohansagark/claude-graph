@@ -228,6 +228,9 @@ class GraphStore:
             "SELECT * FROM nodes WHERE file = ? ORDER BY start_line", (file,)
         ).fetchall()
 
+    def all_nodes(self) -> list[sqlite3.Row]:
+        return self.conn.execute("SELECT * FROM nodes ORDER BY id").fetchall()
+
     # -- edges ------------------------------------------------------------
 
     def add_edge(self, src: int, dst: int, kind: str) -> None:
@@ -250,6 +253,9 @@ class GraphStore:
         return self.conn.execute(
             "SELECT * FROM edges WHERE src = ? AND kind = ?", (node_id, kind)
         ).fetchall()
+
+    def all_edges(self) -> list[sqlite3.Row]:
+        return self.conn.execute("SELECT * FROM edges ORDER BY id").fetchall()
 
     # -- stats ------------------------------------------------------------
 

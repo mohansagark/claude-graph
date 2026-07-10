@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "claude-graph"
-version = "0.1.0"
+version = "0.1.1"
 description = "Local-only knowledge graph for Claude Code on macOS"
 readme = {file = "README.md", content-type = "text/markdown"}
 requires-python = ">=3.11"

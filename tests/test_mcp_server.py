@@ -42,6 +42,7 @@ def test_lists_expected_tools(tmp_path):
         "query_graph_tool",
         "get_impact_radius_tool",
         "search_nodes_tool",
+        "render_graph_tool",
     }
 
 
@@ -108,3 +109,23 @@ def test_get_graph_stats_before_build_returns_zeroes(tmp_path):
     app = create_server(repo)
     stats = _call(app, "get_graph_stats", {})
     assert stats == {"files": 0, "nodes": 0, "edges": 0, "languages": []}
+
+
+def test_render_graph_tool_writes_html(tmp_path):
+    repo = _make_repo(tmp_path)
+    app = create_server(repo)
+    _call(app, "build_or_update_graph", {})
+
+    result = _call(app, "render_graph_tool", {})
+    assert (repo / ".claude-graph" / "graph.html").exists()
+    assert result["path"] == str(repo / ".claude-graph" / "graph.html")
+    assert result["node_count"] > 0
+
+
+def test_render_graph_tool_symbol_scope(tmp_path):
+    repo = _make_repo(tmp_path)
+    app = create_server(repo)
+    _call(app, "build_or_update_graph", {})
+
+    result = _call(app, "render_graph_tool", {"scope": "symbol", "symbol": "bar"})
+    assert result["node_count"] >= 1

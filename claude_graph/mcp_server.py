@@ -12,6 +12,7 @@ from claude_graph.graph_store import GraphStore
 from claude_graph.impact import get_impact_radius
 from claude_graph.query import query_graph
 from claude_graph.search import search_nodes
+from claude_graph.viz import render_graph
 
 
 def _db_path(repo_root: Path) -> Path:
@@ -60,6 +61,25 @@ def create_server(repo_root: Path) -> FastMCP:
         """Keyword search over function/class names and signatures."""
         with GraphStore(_db_path(repo_root)) as store:
             return search_nodes(store, query)
+
+    @app.tool()
+    def render_graph_tool(
+        scope: str = "full",
+        symbol: str | None = None,
+        changed_files: list[str] | None = None,
+        depth: int = 2,
+    ) -> dict:
+        """Render the graph (or a scoped neighborhood) to a self-contained,
+        offline HTML file at .claude-graph/graph.html. `scope` is one of:
+        full (default, whole graph), symbol (neighborhood of `symbol`), or
+        impact (impact radius of `changed_files` at `depth`). Returns the
+        file path — tell the user to open it in a browser; this tool does
+        not open it for them."""
+        output_path = repo_root / ".claude-graph" / "graph.html"
+        with GraphStore(_db_path(repo_root)) as store:
+            return render_graph(
+                store, output_path, scope=scope, symbol=symbol, changed_files=changed_files, depth=depth
+            )
 
     return app
 

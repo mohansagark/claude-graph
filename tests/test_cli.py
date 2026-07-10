@@ -55,3 +55,53 @@ def test_install_command_writes_config_and_skills(tmp_path, capsys):
     main(["install", "--repo", str(repo)])
     assert (repo / ".mcp.json").exists()
     assert (repo / ".claude" / "skills" / "build-graph" / "SKILL.md").exists()
+
+
+def test_viz_command_full_scope(tmp_path, capsys):
+    repo = _make_repo(tmp_path)
+    main(["build", "--repo", str(repo)])
+    capsys.readouterr()
+
+    main(["viz", "--repo", str(repo)])
+    output = json.loads(capsys.readouterr().out)
+    assert (repo / ".claude-graph" / "graph.html").exists()
+    assert output["path"] == str(repo / ".claude-graph" / "graph.html")
+    assert output["node_count"] > 0
+
+
+def test_viz_command_custom_output_path(tmp_path, capsys):
+    repo = _make_repo(tmp_path)
+    main(["build", "--repo", str(repo)])
+    capsys.readouterr()
+
+    custom = repo / "out.html"
+    main(["viz", "--repo", str(repo), "-o", str(custom)])
+    json.loads(capsys.readouterr().out)
+    assert custom.exists()
+
+
+def test_viz_command_symbol_scope(tmp_path, capsys):
+    repo = _make_repo(tmp_path)
+    main(["build", "--repo", str(repo)])
+    capsys.readouterr()
+
+    main(["viz", "--repo", str(repo), "--symbol", "foo"])
+    output = json.loads(capsys.readouterr().out)
+    assert output["node_count"] >= 1
+
+
+def test_viz_command_impact_scope(tmp_path, capsys):
+    repo = _make_repo(tmp_path)
+    main(["build", "--repo", str(repo)])
+    capsys.readouterr()
+
+    main(["viz", "--repo", str(repo), "--impact", "a.py"])
+    output = json.loads(capsys.readouterr().out)
+    assert output["node_count"] >= 1
+
+
+def test_viz_command_symbol_and_impact_are_mutually_exclusive(tmp_path):
+    repo = _make_repo(tmp_path)
+    main(["build", "--repo", str(repo)])
+    with pytest.raises(SystemExit):
+        main(["viz", "--repo", str(repo), "--symbol", "foo", "--impact", "a.py"])

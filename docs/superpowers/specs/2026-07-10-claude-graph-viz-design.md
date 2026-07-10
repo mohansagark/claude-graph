@@ -109,7 +109,7 @@ arguments.
   `claude_graph/static/graph_template.html`, via a plain string replace (a
   `{{DATA_JSON}}` placeholder) — no templating engine dependency.
 - The template inlines a vendored copy of `d3.v7.min.js`
-  (`claude_graph/static/d3.v7.min.js`, MIT license, license text kept
+  (`claude_graph/static/d3.v7.min.js`, ISC license, license text kept
   alongside it) directly into a `<script>` tag at render time. The output
   HTML file is fully self-contained: no `<script src="http...">`, no
   external stylesheet or font, works opened directly via `file://` with no

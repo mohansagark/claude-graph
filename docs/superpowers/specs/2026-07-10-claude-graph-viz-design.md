@@ -161,9 +161,15 @@ arguments.
     fixtures where possible) produces a well-formed HTML file; the embedded
     JSON payload round-trips (extract and `json.loads` it back out of the
     HTML) and matches expected node/edge counts.
-  - Asserts **no `http://` or `https://` substring appears anywhere in the
-    output HTML** — the concrete, checkable proof that D3 is truly inlined
-    and not CDN-loaded, in the same spirit as the existing no-network test.
+  - Asserts **no network-call vector (`http://`, `https://`, `fetch(`,
+    `XMLHttpRequest`, `WebSocket`, `<script src=`, `<link`) appears anywhere
+    in the output HTML outside the vendored D3 blob itself** — the vendored
+    file legitimately contains `http://` XML namespace URIs (e.g.
+    `http://www.w3.org/2000/svg`, used by DOM APIs, never fetched) and an
+    unused `fetch(` token from its bundled `d3-fetch` module, so the check
+    excludes that pinned, git-reviewable blob and strictly checks everything
+    `render_graph` itself generates around it. `test_no_network.py`
+    separately proves the whole call makes no socket connections at all.
   - Covers all three scopes (`full`, `symbol`, `impact`), including the
     empty-result cases above.
   - CLI `viz` command test, in-process, following the existing CLI test

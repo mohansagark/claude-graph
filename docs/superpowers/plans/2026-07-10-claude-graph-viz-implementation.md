@@ -10,7 +10,7 @@
 
 ## Global Constraints
 
-- Zero network calls, ever — the generated HTML must contain no `http://` or `https://` substring anywhere (proves D3 is truly inlined, not CDN-loaded). Source: `docs/superpowers/specs/2026-07-10-claude-graph-viz-design.md` Rendering section.
+- Zero network calls, ever — everything `render_graph` generates around the vendored D3 blob (template + JSON payload) must contain no network-call vector (`http://`, `https://`, `fetch(`, `XMLHttpRequest`, `WebSocket`, `<script src=`, `<link`). The vendored blob itself is excluded from this textual check (it legitimately contains XML namespace URIs and an unused `fetch(` token) but is covered by the existing behavioral no-network test instead. Source: `docs/superpowers/specs/2026-07-10-claude-graph-viz-design.md` Rendering section.
 - Neither the CLI `viz` command nor the `render_graph_tool` MCP tool ever opens a browser automatically — both only write the file and report its path. Source: spec Non-goals.
 - `render_graph_tool`'s output path is fixed at `.claude-graph/graph.html` (not caller-choosable over MCP). The CLI's `-o/--output` flag may override it. Source: spec CLI/MCP sections.
 - `scope` is one of `"full"`, `"symbol"`, `"impact"`; `"symbol"` requires `symbol`, `"impact"` requires `changed_files`; any other combination raises `ValueError`. Source: spec Architecture section.
@@ -372,15 +372,30 @@ def test_render_graph_full_scope_payload_matches_counts(tmp_path):
     assert payload["highlight_ids"] == []
 
 
-def test_render_graph_output_has_no_network_urls(tmp_path):
+def test_render_graph_output_has_no_network_call_vectors(tmp_path):
+    """The vendored D3 library's own minified source legitimately contains
+    http:// substrings (XML namespace URIs like http://www.w3.org/2000/svg,
+    used by DOM APIs, never fetched over the network) and the token
+    "fetch(" (its unused d3-fetch module), so a blanket ban across the
+    whole file always false-positives on the vendored blob. That blob is
+    pinned and committed to git (human-reviewable), and test_no_network.py
+    separately proves render_graph makes no socket connections at all. What
+    this test guards is everything render_graph itself generates around
+    that blob (the template + embedded JSON payload): it must contain zero
+    network-call vectors."""
     repo = _make_repo(tmp_path)
     output = repo / ".claude-graph" / "graph.html"
     with GraphStore(repo / ".claude-graph" / "graph.db") as store:
         render_graph(store, output, scope="full")
 
     html = output.read_text(encoding="utf-8")
-    assert "http://" not in html
-    assert "https://" not in html
+    d3_script = (Path(__file__).parent.parent / "claude_graph" / "static" / "d3.v7.min.js").read_text(
+        encoding="utf-8"
+    )
+    generated = html.replace(d3_script, "")
+
+    for vector in ("http://", "https://", "fetch(", "XMLHttpRequest", "WebSocket", "<script src=", "<link"):
+        assert vector not in generated, f"network-call vector {vector!r} found outside vendored D3 blob"
 
 
 def test_render_graph_invalid_scope_raises(tmp_path):

@@ -35,6 +35,9 @@ packages = ["claude_graph"]
 
 [tool.hatch.build.targets.wheel.force-include]
 "claude_graph/default_languages.toml" = "claude_graph/default_languages.toml"
+"claude_graph/static/d3.v7.min.js" = "claude_graph/static/d3.v7.min.js"
+"claude_graph/static/d3-LICENSE" = "claude_graph/static/d3-LICENSE"
+"claude_graph/static/graph_template.html" = "claude_graph/static/graph_template.html"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

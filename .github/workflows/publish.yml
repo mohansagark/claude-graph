@@ -1,4 +1,4 @@
-name: Publish to PyPI
+name: Publish release
 
 on:
   release:
@@ -59,3 +59,55 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "${{ github.event.release.tag_name }}" dist/* --clobber --repo "${{ github.repository }}"
+
+  docker:
+    name: Build, smoke-test, and publish Docker image to GHCR
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build image locally for smoke test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: claude-graph:smoke-test
+
+      - name: Smoke test — run the image against a real fixture repo
+        run: |
+          mkdir -p /tmp/smoke-repo
+          cd /tmp/smoke-repo
+          git init -q
+          printf 'def foo():\n    return bar()\n\ndef bar():\n    return 1\n' > a.py
+          git add -A
+          docker run --rm -v /tmp/smoke-repo:/repo claude-graph:smoke-test build > /tmp/smoke-out.json
+          cat /tmp/smoke-out.json
+          python3 -c "
+          import json
+          stats = json.load(open('/tmp/smoke-out.json'))
+          assert stats['nodes'] >= 2, stats
+          assert stats['edges'] >= 1, stats
+          print('smoke test passed:', stats)
+          "
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ github.event.release.tag_name }}
+            ghcr.io/${{ github.repository }}:latest

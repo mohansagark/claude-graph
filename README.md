@@ -64,8 +64,10 @@ outbound sockets disabled and asserts nothing tries to connect anywhere.
 pip install claude-graph
 ```
 
-GitHub Packages doesn't support Python packages directly, so if you'd
-rather install straight from this repo without going through PyPI, each
+GitHub Packages doesn't support pip-installable Python packages directly
+(only npm, Docker, Maven, Gradle, NuGet, and RubyGems are native registry
+types there), so if you'd rather install straight from this repo without
+going through PyPI, each
 [release](https://github.com/mohansagark/claude-graph/releases) also ships
 the wheel as a downloadable asset:
 
@@ -80,6 +82,25 @@ git clone https://github.com/mohansagark/claude-graph.git
 cd claude-graph
 pip install -e .
 ```
+
+### Docker
+
+A container image is published to GitHub Container Registry on every
+release — this *is* a real GitHub Package, unlike the two options above:
+
+```bash
+docker pull ghcr.io/mohansagark/claude-graph:latest
+docker run --rm -v "$PWD:/repo" ghcr.io/mohansagark/claude-graph build
+```
+
+Every command mounts your repo at `/repo` and takes the same arguments as
+the native CLI, e.g. `docker run --rm -v "$PWD:/repo" ghcr.io/mohansagark/claude-graph viz --symbol foo`.
+Note this is more friction than `pip install` for day-to-day use — in
+particular, wiring `claude-graph serve` up as Claude Code's MCP server via
+Docker means `.mcp.json`'s command becomes a `docker run -v ...` invocation
+instead of a bare binary, which is why `claude-graph install` (below)
+generates the native-binary form by default. Docker is mainly useful when
+you don't want a Python environment on the host at all.
 
 Then, inside the project you want a graph for:
 

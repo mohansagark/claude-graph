@@ -1,5 +1,6 @@
 # claude-graph
 
+![PyPI](https://img.shields.io/pypi/v/claude-graph)
 ![Python](https://img.shields.io/badge/python-3.11%2B-blue)
 ![Platform](https://img.shields.io/badge/platform-macOS-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
@@ -49,6 +50,7 @@ outbound sockets disabled and asserts nothing tries to connect anywhere.
 - [Search behavior](#search-behavior)
 - [Known limitations](#known-limitations)
 - [For teammates installing this themselves](#for-teammates-installing-this-themselves)
+- [Releasing (maintainers)](#releasing-maintainers)
 
 ## Requirements
 
@@ -57,6 +59,12 @@ outbound sockets disabled and asserts nothing tries to connect anywhere.
 - git
 
 ## Install
+
+```bash
+pip install claude-graph
+```
+
+Or from source, for local development or to track `main`:
 
 ```bash
 git clone https://github.com/mohansagark/claude-graph.git
@@ -211,6 +219,16 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest
 ```
+
+## Releasing (maintainers)
+
+Publishing to PyPI is automated via
+[`.github/workflows/publish.yml`](.github/workflows/publish.yml) using PyPI
+Trusted Publishing (OIDC — no API token stored in this repo). Bump the
+`version` in `pyproject.toml`, then cut a
+[GitHub Release](https://github.com/mohansagark/claude-graph/releases/new);
+publishing the release triggers the workflow, which builds the sdist/wheel
+and uploads them to PyPI.
 
 ## License
 

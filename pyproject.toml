@@ -11,18 +11,27 @@ requires-python = ">=3.11"
 authors = [{ name = "Mohansagar" }]
 license = "MIT"
 license-files = ["LICENSE"]
+keywords = ["claude-code", "mcp", "tree-sitter", "knowledge-graph", "code-analysis", "sqlite"]
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Operating System :: MacOS :: MacOS X",
+    "Topic :: Software Development :: Documentation",
 ]
 dependencies = [
     "mcp>=1.0.0,<2",
     "tree-sitter>=0.23.0,<1",
     "tree-sitter-language-pack>=0.3.0,<1",
 ]
+
+[project.urls]
+Homepage = "https://github.com/mohansagark/claude-graph"
+Repository = "https://github.com/mohansagark/claude-graph"
+Issues = "https://github.com/mohansagark/claude-graph/issues"
 
 [project.scripts]
 claude-graph = "claude_graph.cli:main"

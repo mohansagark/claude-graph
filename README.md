@@ -26,8 +26,8 @@ happens locally, with zero network calls, ever.**
 - No telemetry, no daemon, no multi-repo registry.
 
 See `tests/test_no_network.py` for the automated proof: it runs a full
-build + query + impact + search + MCP server startup cycle with outbound
-sockets disabled and asserts nothing tries to connect anywhere.
+build + query + impact + search + viz + MCP server startup cycle with
+outbound sockets disabled and asserts nothing tries to connect anywhere.
 
 ## Requirements
 
@@ -71,6 +71,7 @@ first) before expecting real answers.
 | `claude-graph status` | Prints node/edge/file counts |
 | `claude-graph install` | Writes `.mcp.json` and `.claude/skills/` for this repo |
 | `claude-graph serve` | Starts the MCP server (stdio) — Claude Code launches this itself |
+| `claude-graph viz` | Render an interactive HTML graph view (`--symbol NAME` or `--impact FILE...` to scope it, `-o PATH` to change the output path) |
 
 ## MCP tools
 
@@ -81,6 +82,28 @@ first) before expecting real answers.
 | `query_graph_tool` | `callers_of` / `callees_of` / `imports_of` / `tests_for` / `file_summary` |
 | `get_impact_radius_tool` | Blast radius of a set of changed files |
 | `search_nodes_tool` | Keyword search over function/class names and signatures |
+| `render_graph_tool` | Render the graph (or a scoped neighborhood) to a self-contained local HTML file |
+
+## Graph visualization
+
+`claude-graph viz` (or the `render_graph_tool` MCP tool) writes a single
+self-contained HTML file to `.claude-graph/graph.html` — open it directly in
+a browser via `file://`, no server involved. It embeds a vendored copy of
+D3 (ISC license) directly into the file, so it works fully offline, same as
+everything else in this tool.
+
+- `claude-graph viz` — the whole graph.
+- `claude-graph viz --symbol NAME` — just that function/class's direct
+  callers, callees, and its file's imports.
+- `claude-graph viz --impact FILE [FILE...] [--depth N]` — the impact
+  radius of those changed files (same data as `get_impact_radius_tool`, laid
+  out visually).
+
+Click a node to highlight its direct neighborhood and see its file/line in
+a side panel; drag to reposition; scroll to zoom; type in the search box to
+find a node by name. There's no node cap yet, so a whole-repo view on a very
+large codebase (thousands of nodes) may render slowly — see Known
+limitations.
 
 ## Supported languages
 
@@ -143,6 +166,9 @@ function/class/import/call for that grammar). No code change needed.
   changed. If you move a symbol to another file, calls into it from
   files you didn't touch keep pointing at the old resolution until the
   next full `claude-graph build`.
+- `claude-graph viz`'s whole-graph view has no node cap. On a very large
+  codebase this can be slow or cluttered in the browser; scope it with
+  `--symbol` or `--impact` for a focused view instead.
 
 ## For teammates installing this themselves
 

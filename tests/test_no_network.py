@@ -1,5 +1,5 @@
 """Proof that claude-graph never makes a network call during normal
-operation: build, query, impact, search, and MCP server startup all
+operation: build, query, impact, search, viz, and MCP server startup all
 succeed with outbound sockets disabled.
 
 Note: subprocess children spawned by claude-graph (e.g., git ls-files)
@@ -21,6 +21,7 @@ from claude_graph.impact import get_impact_radius
 from claude_graph.mcp_server import create_server
 from claude_graph.query import query_graph
 from claude_graph.search import search_nodes
+from claude_graph.viz import render_graph
 
 
 def _git(*args: str, cwd: Path) -> None:
@@ -51,7 +52,10 @@ def test_full_workflow_makes_no_network_calls(tmp_path, no_network):
         impact = get_impact_radius(store, ["a.py"])
         assert impact["changed_files"] == ["a.py"]
 
-    # Test MCP server startup (construction registers all 5 tools)
+        html_result = render_graph(store, tmp_path / ".claude-graph" / "graph.html", scope="full")
+        assert html_result["node_count"] > 0
+
+    # Test MCP server startup (construction registers all 6 tools)
     app = create_server(tmp_path)
     tools = asyncio.run(app.list_tools())
-    assert len(tools) == 5
+    assert len(tools) == 6

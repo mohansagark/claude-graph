@@ -64,6 +64,15 @@ outbound sockets disabled and asserts nothing tries to connect anywhere.
 pip install claude-graph
 ```
 
+GitHub Packages doesn't support Python packages directly, so if you'd
+rather install straight from this repo without going through PyPI, each
+[release](https://github.com/mohansagark/claude-graph/releases) also ships
+the wheel as a downloadable asset:
+
+```bash
+pip install https://github.com/mohansagark/claude-graph/releases/download/v0.1.0/claude_graph-0.1.0-py3-none-any.whl
+```
+
 Or from source, for local development or to track `main`:
 
 ```bash

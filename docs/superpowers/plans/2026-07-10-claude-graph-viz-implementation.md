@@ -1,6 +1,6 @@
 # claude-graph interactive graph visualization Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Add a self-contained, offline, interactive HTML graph view of the codebase claude-graph already indexes — exposed both as `claude-graph viz` (CLI) and `render_graph_tool` (MCP), scoped to the whole graph, one symbol's neighborhood, or a changed-files impact radius.
 
@@ -28,7 +28,7 @@
 **Interfaces:**
 - Produces: `GraphStore.all_nodes() -> list[sqlite3.Row]` (every row in `nodes`, ordered by `id`), `GraphStore.all_edges() -> list[sqlite3.Row]` (every row in `edges`, ordered by `id`). Later tasks (Task 2) call these directly.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/test_graph_store.py`:
 
@@ -59,12 +59,12 @@ def test_all_edges_returns_every_edge(tmp_path):
     store.close()
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_graph_store.py -k "all_nodes or all_edges" -v`
 Expected: FAIL with `AttributeError: 'GraphStore' object has no attribute 'all_nodes'`
 
-- [ ] **Step 3: Implement the methods**
+- [x] **Step 3: Implement the methods**
 
 In `claude_graph/graph_store.py`, add immediately after the `nodes_for_file` method (which ends around line 229, right before the `# -- edges --` comment):
 
@@ -80,12 +80,12 @@ And after the `edges_by_src` method (right before the `# -- stats --` comment):
         return self.conn.execute("SELECT * FROM edges ORDER BY id").fetchall()
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `python -m pytest tests/test_graph_store.py -v`
 Expected: all PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add claude_graph/graph_store.py tests/test_graph_store.py
@@ -108,7 +108,7 @@ git commit -m "Add GraphStore.all_nodes()/all_edges() for full-graph reads"
 - Consumes: `GraphStore.all_nodes()`, `GraphStore.all_edges()` (Task 1).
 - Produces: `render_graph(store: GraphStore, output_path: Path, scope: str = "full", symbol: str | None = None, changed_files: list[str] | None = None, depth: int = 2) -> dict` returning `{"path": str, "node_count": int, "edge_count": int}`. Tasks 3-5 call this with other `scope` values.
 
-- [ ] **Step 1: Vendor D3 v7 and its license**
+- [x] **Step 1: Vendor D3 v7 and its license**
 
 ```bash
 mkdir -p claude_graph/static
@@ -124,7 +124,7 @@ wc -c claude_graph/static/d3.v7.min.js claude_graph/static/d3-LICENSE
 
 Expected: `d3.v7.min.js` is on the order of 250-290KB; `d3-LICENSE` is a few hundred bytes and contains the string `Bostock`.
 
-- [ ] **Step 2: Create the HTML template**
+- [x] **Step 2: Create the HTML template**
 
 Create `claude_graph/static/graph_template.html`:
 
@@ -314,7 +314,7 @@ if (DATA.nodes.length === 0) {
 </html>
 ```
 
-- [ ] **Step 3: Write the failing tests**
+- [x] **Step 3: Write the failing tests**
 
 Create `tests/test_viz.py`:
 
@@ -409,12 +409,12 @@ def test_render_graph_invalid_scope_raises(tmp_path):
             pass
 ```
 
-- [ ] **Step 4: Run tests to verify they fail**
+- [x] **Step 4: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_viz.py -v`
 Expected: FAIL with `ModuleNotFoundError: No module named 'claude_graph.viz'`
 
-- [ ] **Step 5: Implement `claude_graph/viz.py`**
+- [x] **Step 5: Implement `claude_graph/viz.py`**
 
 ```python
 """Static, self-contained HTML graph visualization: renders the graph (or
@@ -496,12 +496,12 @@ def _render_html(payload: dict) -> str:
     return html
 ```
 
-- [ ] **Step 6: Run tests to verify they pass**
+- [x] **Step 6: Run tests to verify they pass**
 
 Run: `python -m pytest tests/test_viz.py -v`
 Expected: all PASS (the `symbol`/`impact` tests belong to Task 3, not written yet)
 
-- [ ] **Step 7: Force-include the static assets in the wheel build**
+- [x] **Step 7: Force-include the static assets in the wheel build**
 
 In `pyproject.toml`, change:
 
@@ -520,7 +520,7 @@ to:
 "claude_graph/static/graph_template.html" = "claude_graph/static/graph_template.html"
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add claude_graph/static claude_graph/viz.py pyproject.toml tests/test_viz.py
@@ -539,7 +539,7 @@ git commit -m "Add render_graph (scope=full) with vendored D3 self-contained HTM
 - Consumes: `GraphStore.find_nodes_by_name`, `GraphStore.find_module_node`, `GraphStore.nodes_for_file`, `GraphStore.edges_by_src`, `GraphStore.edges_by_dst`, `GraphStore.get_node` (all pre-existing).
 - Produces: fully working `render_graph(..., scope="symbol", symbol=...)` and `render_graph(..., scope="impact", changed_files=..., depth=...)`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/test_viz.py`:
 
@@ -663,12 +663,12 @@ def test_render_graph_missing_changed_files_arg_raises(tmp_path):
             pass
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_viz.py -v`
 Expected: the new `symbol`/`impact` tests FAIL with `NotImplementedError`; the two "missing arg raises" tests PASS already (that validation lives in `render_graph` itself from Task 2).
 
-- [ ] **Step 3: Implement the two functions**
+- [x] **Step 3: Implement the two functions**
 
 In `claude_graph/viz.py`, replace:
 
@@ -774,12 +774,12 @@ def _impact_neighborhood(
     return nodes, edges, highlight_ids
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `python -m pytest tests/test_viz.py -v`
 Expected: all PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add claude_graph/viz.py tests/test_viz.py
@@ -797,7 +797,7 @@ git commit -m "Implement symbol and impact scopes for render_graph"
 **Interfaces:**
 - Consumes: `render_graph` (Task 2/3), `GraphStore` (existing), `_resolve_repo_root` (existing, `claude_graph/cli.py`).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Append to `tests/test_cli.py`:
 
@@ -852,12 +852,12 @@ def test_viz_command_symbol_and_impact_are_mutually_exclusive(tmp_path):
         main(["viz", "--repo", str(repo), "--symbol", "foo", "--impact", "a.py"])
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_cli.py -k viz -v`
 Expected: FAIL with `SystemExit` / `argument --repo: invalid choice` style errors, since the `viz` subcommand doesn't exist yet (argparse will reject the unknown subcommand).
 
-- [ ] **Step 3: Implement the command**
+- [x] **Step 3: Implement the command**
 
 In `claude_graph/cli.py`, add the import alongside the existing top-level imports:
 
@@ -942,12 +942,12 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `python -m pytest tests/test_cli.py -v`
 Expected: all PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add claude_graph/cli.py tests/test_cli.py
@@ -966,7 +966,7 @@ git commit -m "Add claude-graph viz CLI command"
 - Consumes: `render_graph` (Task 2/3).
 - Produces: `render_graph_tool(scope: str = "full", symbol: str | None = None, changed_files: list[str] | None = None, depth: int = 2) -> dict`, registered on the MCP server alongside the existing 5 tools.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 In `tests/test_mcp_server.py`, change the existing `test_lists_expected_tools`:
 
@@ -1009,12 +1009,12 @@ def test_render_graph_tool_symbol_scope(tmp_path):
     assert result["node_count"] >= 1
 ```
 
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
 
 Run: `python -m pytest tests/test_mcp_server.py -v`
 Expected: `test_lists_expected_tools` FAILs (set is missing `render_graph_tool`); the two new tests FAIL with an unknown-tool error from the MCP SDK.
 
-- [ ] **Step 3: Implement the tool**
+- [x] **Step 3: Implement the tool**
 
 In `claude_graph/mcp_server.py`, add the import at the top alongside the others:
 
@@ -1045,12 +1045,12 @@ And add the tool after `search_nodes_tool` (before `return app`):
             )
 ```
 
-- [ ] **Step 4: Run tests to verify they pass**
+- [x] **Step 4: Run tests to verify they pass**
 
 Run: `python -m pytest tests/test_mcp_server.py -v`
 Expected: all PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add claude_graph/mcp_server.py tests/test_mcp_server.py
@@ -1068,7 +1068,7 @@ git commit -m "Expose render_graph as an MCP tool"
 **Interfaces:**
 - Consumes: `render_graph` (Task 2/3), `create_server` (existing).
 
-- [ ] **Step 1: Write the failing test change**
+- [x] **Step 1: Write the failing test change**
 
 In `tests/test_no_network.py`, add the import:
 
@@ -1099,17 +1099,17 @@ to:
 
 (This sits inside the existing `with GraphStore(...) as store:` block, right after the `impact = get_impact_radius(...)` line — indent it to match the other `store`-using lines in that block.)
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `python -m pytest tests/test_no_network.py -v`
 Expected: FAIL — either the old `assert len(tools) == 5` (before the edit) or, once edited, it should pass immediately since `render_graph` was already implemented in Tasks 2-3. Run it once before editing to confirm the old count assertion (`== 5`) is what's there, then apply the edit above.
 
-- [ ] **Step 3: Run test to verify it passes**
+- [x] **Step 3: Run test to verify it passes**
 
 Run: `python -m pytest tests/test_no_network.py -v`
 Expected: PASS — confirms `render_graph` makes no network calls even under the socket-blocking fixture.
 
-- [ ] **Step 4: Update the README**
+- [x] **Step 4: Update the README**
 
 Add a row to the CLI table (after the `serve` row):
 
@@ -1156,12 +1156,12 @@ Add a bullet to "## Known limitations":
   `--symbol` or `--impact` for a focused view instead.
 ```
 
-- [ ] **Step 5: Run the full test suite**
+- [x] **Step 5: Run the full test suite**
 
 Run: `python -m pytest -v`
 Expected: all tests PASS (this project's full suite, now including `test_viz.py`)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add tests/test_no_network.py README.md
